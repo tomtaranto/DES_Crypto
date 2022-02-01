@@ -134,18 +134,48 @@ def DES_decode(text, key):
     full_decoded_message = convab.nib_vnoc(full_decoded_message)
     return full_decoded_message
 
+
+def test_all():
+    all_mat = ecdes.recupConstantesDES()
+    key = '0101111001011011010100100111111101010001000110101011110010010001'
+    all_keys = parse_key(key, all_mat)
+    print("test 1 : ", all_keys['k_1'] == '111110011000001010001110010101111111000011101001')
+    print("test 2 : ", all_keys['k_2'] == '101100010001111010101010011010001110111011011111')
+
+    M = '1101110010111011110001001101010111100110111101111100001000110010100111010010101101101011111000110011101011011111'
+    print("test 3 : ", ''.join(paquetage(M)[0]) == '1101110010111011110001001101010111100110111101111100001000110010')
+    print("test 4 : ", ''.join(paquetage(M)[1]) == '1001110100101011011010111110001100111010110111110000000000000000')
+
+    m1 = ''.join(paquetage(M)[0])
+    print("test 5 : ",
+          permute(m1, all_mat['PI'][0]) == '0111110110101011001111010010101001111111101100100000001111110010')
+
+    message_permute = permute(m1, all_mat['PI'][0])
+    D,G = message_permute[32:], message_permute[:32]
+    print("test 6 : ", D == '01111111101100100000001111110010' and G == '01111101101010110011110100101010')
+    G, D = ronde(D,G, all_keys['k_1'], all_mat)
+    print('test 7 : ', G=='01111111101100100000001111110010' and D =='11011110111011001101000011001100' )
+    for i in range(1,16):
+        G, D = ronde(D, G, all_keys['k_' + str(i + 1)], all_mat)
+    print('test 8 : ', G=='00110000110010100100001000011100' and D == '11010101001001100001000100011010' )
+    mprime = G+D
+    pinv = permute(mprime,all_mat['PI_I'][0])
+    print('test 9 : ', pinv =='1000100000110110101000010001001111001011011000001001010010010000')
+    pass
+
+
 def main():
     text = "un Petit te$t0! avec un message beaucoup plus long qui est long et qui risque fortement de tout faire crash parce que ce'est adb faejbfoiezhbf zheb hzbecizbc jhz efibzfo qzf"
     # key = '1101011011000001100100101010010000010011101001001101011010000000'
-
-    key = '0101111001011011010100100111111101010001000110101011110010010001'
-    full_encoded_message = DES_encode(text, key)
-    print_balise('message encode')
-    print(full_encoded_message)
-    print_balise('decoding ...')
-    full_decoded_message = DES_decode(full_encoded_message,key)
-    print_balise("resultat : "+full_decoded_message)
-
+    # text='Eddy'
+    # key = '0101111001011011010100100111111101010001000110101011110010010001'
+    # full_encoded_message = DES_encode(text, key)
+    # print_balise('message encode')
+    # print(full_encoded_message)
+    # print_balise('decoding ...')
+    # full_decoded_message = DES_decode(full_encoded_message,key)
+    # print_balise("resultat : "+full_decoded_message)
+    test_all()
 
 
 if __name__ == '__main__':
