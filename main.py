@@ -40,16 +40,23 @@ def parse_key(key, mat):
     # On separe la clé en 2
     G, D = ''.join(CP1_k[:28]), ''.join(CP1_k[28:])
     allk = dict()
+    # single_shift = [1,2,9,16]
     for i in range(1, 17, 1):
         G, D = left_shift(G), left_shift(D)
-        allk['k_' + str(i)] = permute(G + D, mat['CP_2'][0])
+        # if i not in single_shift:
+        #     print(i)
+        #     G, D = left_shift(G), left_shift(D)
+        allk['k_' + str(i)] = permute(G+D, mat['CP_2'][0])
     return allk
 
 
 # Prend en parametre le message en bit
 # Le divise en paquets de 64 et ajoute des 0 à la fin
 def paquetage(message):
-    res = np.zeros((len(message) // 64 + 1, 64), dtype=str)
+    if len(message)%64 !=0:
+        res = np.zeros((len(message) // 64 + 1, 64), dtype=str)
+    else:
+        res = np.zeros((len(message) // 64, 64), dtype=str)
     for i in range(res.shape[0]):
         for j in range(64):
             try:
@@ -101,33 +108,33 @@ def DES_encode(text, key):
         message_permute = permute(m[i], all_mat["PI"][0])
         # G,D = ''.join(m[i][:32]),''.join(m[i][32:])
         G, D = message_permute[:32], message_permute[32:]
-        for i in range(16):
-            G, D = ronde(D, G, all_keys['k_' + str(i + 1)], all_mat)
-        message_prime = ''.join(G) + ''.join(D)
+        for j in range(16):
+            G, D = ronde(D, G, all_keys['k_' + str(j + 1)], all_mat)
+        message_prime = G + D
         perm_inv = permute(message_prime, all_mat['PI_I'][0])
         full_encoded_message += perm_inv
-
+    full_encoded_message = convab.nib_vnoc(full_encoded_message)
     return full_encoded_message
 
 
 def DES_decode(text, key):
     all_mat = ecdes.recupConstantesDES()
     print_balise('Conversion du message')
-    # bin_text = (convab.conv_bin(text))
+    bin_text = (convab.conv_bin(text))
     # print("bin_text : ", bin_text)
     # print(all_mat)
     print_balise('Travail sur les clés')
     all_keys = parse_key(key, all_mat)
     # message ='001001011110110100101101011110101100101101011110110100011010101110110100101100101101111011101011101000100111011110110100110111111000110100'
-    m = paquetage(text)
+    m = paquetage(bin_text)
     full_decoded_message = ""
     print_balise('Decodage du message')
     for i in tqdm(range(m.shape[0])):
         message_permute = permute(m[i], all_mat["PI"][0])
         # G,D = ''.join(m[i][:32]),''.join(m[i][32:])
         G, D = message_permute[:32], message_permute[32:]
-        for i in reversed(range(16)):
-            G, D = ronde(D, G, all_keys['k_' + str(i + 1)], all_mat)
+        for j in reversed(range(16)):
+            G, D = ronde(D, G, all_keys['k_' + str(j + 1)], all_mat)
         message_prime = ''.join(G) + ''.join(D)
         perm_inv = permute(message_prime, all_mat['PI_I'][0])
         full_decoded_message += perm_inv
@@ -151,23 +158,70 @@ def test_all():
           permute(m1, all_mat['PI'][0]) == '0111110110101011001111010010101001111111101100100000001111110010')
 
     message_permute = permute(m1, all_mat['PI'][0])
-    D,G = message_permute[32:], message_permute[:32]
+    D, G = message_permute[32:], message_permute[:32]
     print("test 6 : ", D == '01111111101100100000001111110010' and G == '01111101101010110011110100101010')
-    G, D = ronde(D,G, all_keys['k_1'], all_mat)
-    print('test 7 : ', G=='01111111101100100000001111110010' and D =='11011110111011001101000011001100' )
-    for i in range(1,16):
+    G, D = ronde(D, G, all_keys['k_1'], all_mat)
+    print('test 7 : ', G == '01111111101100100000001111110010' and D == '11011110111011001101000011001100')
+    for i in range(1, 16):
         G, D = ronde(D, G, all_keys['k_' + str(i + 1)], all_mat)
-    print('test 8 : ', G=='00110000110010100100001000011100' and D == '11010101001001100001000100011010' )
-    mprime = G+D
-    pinv = permute(mprime,all_mat['PI_I'][0])
-    print('test 9 : ', pinv =='1000100000110110101000010001001111001011011000001001010010010000')
+    print('test 8 : ', G == '00110000110010100100001000011100' and D == '11010101001001100001000100011010')
+    mprime = G + D
+    pinv = permute(mprime, all_mat['PI_I'][0])
+    print('test 9 : ', pinv == '1000100000110110101000010001001111001011011000001001010010010000')
+
+    text = "un Petit te$t0! avec un message beaucoup plus long qui est long et qui risque fortement de tout faire crash parce que ce'est adb faejbfoiezhbf zheb hzbecizbc jhz efibzfo qzf"
+    print(convab.nib_vnoc(convab.conv_bin(text)))
+
+    print("ip'(ip(x)) = x", permute(permute(text, all_mat['PI'][0]), all_mat['PI_I'][0]) == text)
     pass
 
 
+def encode(message, cles, mat):
+
+    # message_binaire = convab.conv_bin(message)
+    # message_paquet = paquetage(message_binaire)
+    message_paquet = paquetage(message)
+    print("paquet : ", str(''.join([''.join(i) for i in message_paquet])))
+    message_complet = ""
+    for i in range(message_paquet.shape[0]):
+        paquet = message_paquet[i]
+        permutation_initiale = permute(paquet, mat['PI'][0])
+        G, D = permutation_initiale[:32], permutation_initiale[32:]
+        for j in range(16):
+            G, D = ronde(D, G, cles['k_' + str(j + 1)], mat)
+        message_prime = ''.join(D) + ''.join(G)  # C'est sur cette ligne que le prof avait faux ! Il ne faut pas faire le dernier changement gauche droite lors de la derniere permutation
+        permutation_inverse = permute(message_prime, mat['PI_I'][0])
+        message_complet += permutation_inverse
+    print("message encode : ", message_complet)
+    # message_texte = convab.nib_vnoc(message_complet)
+    print("message : ", len(message), "m_bin : ",len(message), "m_paq : ", len(str(''.join([''.join(i) for i in message_paquet]))), "m_comp : ", len(message_complet), "m_text : ", len(message))
+    # return message_texte
+    return message_complet
+
+def reverse_keys(keys):
+    res = dict()
+    for i in reversed(range(16)):
+        res['k_' + str(15 - i + 1)] = keys['k_' + str(i + 1)]
+    return res
+
+
+def test():
+    text = 'Hello'
+    text = '1101110010111011110001001101010111100110111101111100001000110010'
+    key = '0101111001011011010100100111111101010001000110101011110010010001'
+    all_mat = ecdes.recupConstantesDES()
+    encoding_keys = parse_key(key, all_mat)
+    message_encode = encode(text, encoding_keys, all_mat)
+    decoding_keys = reverse_keys(encoding_keys)
+    message_decode = encode(message_encode, decoding_keys, all_mat)
+    print(text)
+    print(message_encode)
+    print(message_decode)
+
+
 def main():
-    text = "un Petit te$t0! avec un message beaucoup plus long qui est long et qui risque fortement de tout faire crash parce que ce'est adb faejbfoiezhbf zheb hzbecizbc jhz efibzfo qzf"
+    # text = "un Petit te$t0! avec un message beaucoup plus long qui est long et qui risque fortement de tout faire crash parce que ce'est adb faejbfoiezhbf zheb hzbecizbc jhz efibzfo qzf"
     # key = '1101011011000001100100101010010000010011101001001101011010000000'
-    # text='Eddy'
     # key = '0101111001011011010100100111111101010001000110101011110010010001'
     # full_encoded_message = DES_encode(text, key)
     # print_balise('message encode')
@@ -175,7 +229,8 @@ def main():
     # print_balise('decoding ...')
     # full_decoded_message = DES_decode(full_encoded_message,key)
     # print_balise("resultat : "+full_decoded_message)
-    test_all()
+    # test_all()
+    test()
 
 
 if __name__ == '__main__':
