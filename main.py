@@ -46,14 +46,14 @@ def parse_key(key, mat):
         # if i not in single_shift:
         #     print(i)
         #     G, D = left_shift(G), left_shift(D)
-        allk['k_' + str(i)] = permute(G+D, mat['CP_2'][0])
+        allk['k_' + str(i)] = permute(G + D, mat['CP_2'][0])
     return allk
 
 
 # Prend en parametre le message en bit
 # Le divise en paquets de 64 et ajoute des 0 à la fin
 def paquetage(message):
-    if len(message)%64 !=0:
+    if len(message) % 64 != 0:
         res = np.zeros((len(message) // 64 + 1, 64), dtype=str)
     else:
         res = np.zeros((len(message) // 64, 64), dtype=str)
@@ -177,11 +177,10 @@ def test_all():
 
 
 def encode(message, cles, mat):
-
-    # message_binaire = convab.conv_bin(message)
-    # message_paquet = paquetage(message_binaire)
-    message_paquet = paquetage(message)
-    print("paquet : ", str(''.join([''.join(i) for i in message_paquet])))
+    message_binaire = convab.conv_bin(message)
+    message_paquet = paquetage(message_binaire)
+    # message_paquet = paquetage(message)
+    # print("paquet : ", str(''.join([''.join(i) for i in message_paquet])))
     message_complet = ""
     for i in range(message_paquet.shape[0]):
         paquet = message_paquet[i]
@@ -189,14 +188,16 @@ def encode(message, cles, mat):
         G, D = permutation_initiale[:32], permutation_initiale[32:]
         for j in range(16):
             G, D = ronde(D, G, cles['k_' + str(j + 1)], mat)
-        message_prime = ''.join(D) + ''.join(G)  # C'est sur cette ligne que le prof avait faux ! Il ne faut pas faire le dernier changement gauche droite lors de la derniere permutation
+        message_prime = ''.join(D) + ''.join(
+            G)  # C'est sur cette ligne que le prof avait faux ! Il ne faut pas faire le dernier changement gauche droite lors de la derniere permutation
         permutation_inverse = permute(message_prime, mat['PI_I'][0])
         message_complet += permutation_inverse
-    print("message encode : ", message_complet)
-    # message_texte = convab.nib_vnoc(message_complet)
-    print("message : ", len(message), "m_bin : ",len(message), "m_paq : ", len(str(''.join([''.join(i) for i in message_paquet]))), "m_comp : ", len(message_complet), "m_text : ", len(message))
-    # return message_texte
-    return message_complet
+    # print("message encode : ", message_complet)
+    message_texte = convab.nib_vnoc(message_complet)
+    # print("message : ", len(message), "m_bin : ",len(message), "m_paq : ", len(str(''.join([''.join(i) for i in message_paquet]))), "m_comp : ", len(message_complet), "m_text : ", len(message))
+    return message_texte
+    # return message_complet
+
 
 def reverse_keys(keys):
     res = dict()
@@ -206,9 +207,9 @@ def reverse_keys(keys):
 
 
 def test():
-    text = 'Hello'
-    text = '1101110010111011110001001101010111100110111101111100001000110010'
-    key = '0101111001011011010100100111111101010001000110101011110010010001'
+    text = "Offrir l'amitié à qui veut l'amour, c'est " \
+           "donner du pain à qui meurt de soif"
+    key = '0101111001011011010100100111111101010001000110101011110010010111'
     all_mat = ecdes.recupConstantesDES()
     encoding_keys = parse_key(key, all_mat)
     message_encode = encode(text, encoding_keys, all_mat)
@@ -217,6 +218,18 @@ def test():
     print(text)
     print(message_encode)
     print(message_decode)
+    print("Etape initial text == Decryption : ", message_decode[:len(text)] == text)
+    for i in range(1, 7):
+        print("------------------" + str(i)+"------------------")
+        with open('Messages/Chiffrement_DES_de_' + str(i) + '.txt', 'rb') as f:
+            full_text = f.read().decode('iso-8859-1')
+        with open('Messages/Clef_de_' + str(i) + '.txt', 'r') as f:
+            current_key = f.read()
+
+        # print("cle, message : ", key, text)
+        decoding_keys = reverse_keys(parse_key(current_key, all_mat))
+        # print("key , encoded : ", current_key, full_text[:100])
+        print("decoded " + str(i) + " :", encode(full_text, decoding_keys, all_mat))
 
 
 def main():
